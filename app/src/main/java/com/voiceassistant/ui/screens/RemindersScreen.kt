@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.voiceassistant.data.model.*
 import com.voiceassistant.ui.MainViewModel
 import com.voiceassistant.ui.theme.*
@@ -42,12 +43,13 @@ fun RemindersScreen(viewModel: MainViewModel) {
                 fontSize = 24.sp, fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
             )
-            FloatingActionButton(
+            Button(
                 onClick = { showAddDialog = true },
-                modifier = Modifier.size(48.dp),
-                containerColor = Primary
+                colors = ButtonDefaults.buttonColors(containerColor = Primary)
             ) {
                 Icon(Icons.Default.Add, "Dodaj", tint = Color.White)
+                Spacer(Modifier.width(4.dp))
+                Text("Dodaj", color = Color.White)
             }
         }
 
@@ -61,13 +63,47 @@ fun RemindersScreen(viewModel: MainViewModel) {
         if (reminders.isEmpty()) {
             EmptyReminders()
         } else {
+            // Grupuj: aktywne codzienne na górze, potem reszta
+            val daily = reminders.filter { it.repeatType == RepeatType.DAILY && it.isActive }
+            val others = reminders.filter { it.repeatType != RepeatType.DAILY || !it.isActive }
+
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(reminders, key = { it.id }) { reminder ->
-                    ReminderCard(
-                        reminder = reminder,
-                        onToggle = { viewModel.toggleReminder(reminder.id, it) },
-                        onDelete = { viewModel.deleteReminder(reminder) }
-                    )
+                if (daily.isNotEmpty()) {
+                    item {
+                        Text(
+                            "Codzienne:",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface.copy(0.6f)
+                        )
+                        Spacer(Modifier.height(4.dp))
+                    }
+                    items(daily, key = { it.id }) { reminder ->
+                        ReminderCard(
+                            reminder = reminder,
+                            onToggle = { viewModel.toggleReminder(reminder.id, it) },
+                            onDelete = { viewModel.deleteReminder(reminder) }
+                        )
+                    }
+                }
+                if (others.isNotEmpty()) {
+                    item {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "Jednorazowe:",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface.copy(0.6f)
+                        )
+                        Spacer(Modifier.height(4.dp))
+                    }
+                    items(others, key = { it.id }) { reminder ->
+                        ReminderCard(
+                            reminder = reminder,
+                            onToggle = { viewModel.toggleReminder(reminder.id, it) },
+                            onDelete = { viewModel.deleteReminder(reminder) }
+                        )
+                    }
                 }
             }
         }
@@ -84,7 +120,7 @@ fun RemindersScreen(viewModel: MainViewModel) {
 @Composable
 fun QuickMedicineButtons(onAdd: (Reminder) -> Unit) {
     Text(
-        "Szybkie dodawanie leków:",
+        "Szybkie dodawanie lekow:",
         fontSize = 12.sp,
         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
     )
@@ -102,7 +138,7 @@ fun QuickMedicineButtons(onAdd: (Reminder) -> Unit) {
                             add(Calendar.DAY_OF_YEAR, 1)
                     }
                     onAdd(Reminder(
-                        title = "Czas na leki 💊",
+                        title = "Czas na leki",
                         dateTime = cal.timeInMillis,
                         category = ReminderCategory.MEDICINE,
                         repeatType = RepeatType.DAILY
@@ -127,19 +163,24 @@ fun ReminderCard(
     onToggle: (Boolean) -> Unit,
     onDelete: () -> Unit
 ) {
-    val fmt = SimpleDateFormat("EEE, d MMM  HH:mm", Locale("pl"))
+    // Dla codziennych pokazuj tylko godzinę, dla jednorazowych pełną datę
+    val timeText = if (reminder.repeatType == RepeatType.DAILY) {
+        SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(reminder.dateTime))
+    } else {
+        SimpleDateFormat("EEE, d MMM  HH:mm", Locale("pl")).format(Date(reminder.dateTime))
+    }
+
     val catColor = when (reminder.category) {
         ReminderCategory.MEDICINE -> MedicineColor
         ReminderCategory.MEETING -> MeetingColor
         ReminderCategory.TASK -> TaskColor
         else -> GeneralColor
     }
-    val isPast = reminder.dateTime < System.currentTimeMillis()
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (isPast)
+            containerColor = if (!reminder.isActive)
                 SurfaceVariant.copy(alpha = 0.5f)
             else SurfaceVariant
         ),
@@ -149,7 +190,6 @@ fun ReminderCard(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Emoji kategorii
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -167,18 +207,16 @@ fun ReminderCard(
                     reminder.title,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 15.sp,
-                    color = if (isPast)
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    else MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    fmt.format(Date(reminder.dateTime)),
+                    timeText,
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                 )
                 if (reminder.repeatType != RepeatType.NONE) {
                     Text(
-                        "🔄 ${reminder.repeatType.label}",
+                        "Powtarza sie: ${reminder.repeatType.label}",
                         fontSize = 11.sp,
                         color = catColor.copy(alpha = 0.8f)
                     )
@@ -193,7 +231,7 @@ fun ReminderCard(
 
             IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
                 Icon(
-                    Icons.Default.Delete, "Usuń",
+                    Icons.Default.Delete, "Usun",
                     modifier = Modifier.size(18.dp),
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                 )
@@ -204,8 +242,8 @@ fun ReminderCard(
 
 private val RepeatType.label get() = when (this) {
     RepeatType.DAILY -> "Codziennie"
-    RepeatType.WEEKLY -> "Co tydzień"
-    RepeatType.MONTHLY -> "Co miesiąc"
+    RepeatType.WEEKLY -> "Co tydzien"
+    RepeatType.MONTHLY -> "Co miesiac"
     RepeatType.NONE -> ""
 }
 
@@ -219,11 +257,11 @@ fun EmptyReminders() {
             Text("🔔", fontSize = 48.sp)
             Spacer(Modifier.height(8.dp))
             Text(
-                "Brak przypomnień",
+                "Brak przypomnien",
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
             Text(
-                "Dodaj ręcznie lub powiedz:\n\"Przypomnij mi wziąć leki o 8\"",
+                "Dodaj recznie lub powiedz:\n\"Przypomnij mi wziac leki o 8\"",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
             )
@@ -238,26 +276,33 @@ fun AddReminderDialog(
     onConfirm: (Reminder) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
-    var timeText by remember { mutableStateOf("") }
+    var hour by remember { mutableStateOf("") }
+    var minute by remember { mutableStateOf("0") }
     var selectedCategory by remember { mutableStateOf(ReminderCategory.GENERAL) }
     var selectedRepeat by remember { mutableStateOf(RepeatType.NONE) }
     var soundEnabled by remember { mutableStateOf(true) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface,
-        title = { Text("Nowe przypomnienie", fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            modifier = Modifier.fillMaxWidth().padding(8.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text("Nowe przypomnienie", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Tytuł *") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text("Tytul *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
                 )
 
-                // Kategorie
-                Text("Kategoria", fontSize = 13.sp,
+                Text("Kategoria:", fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     ReminderCategory.values().take(4).forEach { cat ->
@@ -269,19 +314,33 @@ fun AddReminderDialog(
                     }
                 }
 
-                OutlinedTextField(
-                    value = timeText,
-                    onValueChange = { timeText = it },
-                    label = { Text("Godzina (np. 08:00)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Text("Godzina:", fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = hour,
+                        onValueChange = { hour = it },
+                        label = { Text("Godz (np. 8)") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = minute,
+                        onValueChange = { minute = it },
+                        label = { Text("Min (np. 30)") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                }
 
-                // Powtarzanie
-                Text("Powtarzaj", fontSize = 13.sp,
+                Text("Powtarzaj:", fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf(RepeatType.NONE to "Raz", RepeatType.DAILY to "Codziennie",
-                        RepeatType.WEEKLY to "Co tydzień").forEach { (type, label) ->
+                    listOf(
+                        RepeatType.NONE to "Raz",
+                        RepeatType.DAILY to "Codziennie",
+                        RepeatType.WEEKLY to "Co tydzien"
+                    ).forEach { (type, label) ->
                         FilterChip(
                             selected = selectedRepeat == type,
                             onClick = { selectedRepeat = type },
@@ -291,40 +350,44 @@ fun AddReminderDialog(
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Dźwięk", modifier = Modifier.weight(1f))
+                    Text("Dzwiek alarmu", modifier = Modifier.weight(1f))
                     Switch(checked = soundEnabled, onCheckedChange = { soundEnabled = it })
                 }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (title.isNotBlank()) {
-                        val cal = Calendar.getInstance()
-                        if (timeText.contains(":")) {
-                            val parts = timeText.split(":")
-                            runCatching {
-                                cal.set(Calendar.HOUR_OF_DAY, parts[0].toInt())
-                                cal.set(Calendar.MINUTE, parts[1].toInt())
-                                cal.set(Calendar.SECOND, 0)
-                                if (cal.timeInMillis < System.currentTimeMillis())
-                                    cal.add(Calendar.DAY_OF_YEAR, 1)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Anuluj") }
+
+                    Button(
+                        onClick = {
+                            if (title.isNotBlank()) {
+                                val cal = Calendar.getInstance()
+                                runCatching {
+                                    if (hour.isNotBlank()) cal.set(Calendar.HOUR_OF_DAY, hour.toInt())
+                                    cal.set(Calendar.MINUTE, minute.toIntOrNull() ?: 0)
+                                    cal.set(Calendar.SECOND, 0)
+                                    if (cal.timeInMillis < System.currentTimeMillis())
+                                        cal.add(Calendar.DAY_OF_YEAR, 1)
+                                }
+                                onConfirm(Reminder(
+                                    title = title,
+                                    dateTime = cal.timeInMillis,
+                                    category = selectedCategory,
+                                    repeatType = selectedRepeat,
+                                    soundEnabled = soundEnabled
+                                ))
                             }
-                        } else {
-                            cal.add(Calendar.HOUR_OF_DAY, 1)
-                        }
-                        onConfirm(Reminder(
-                            title = title,
-                            dateTime = cal.timeInMillis,
-                            category = selectedCategory,
-                            repeatType = selectedRepeat,
-                            soundEnabled = soundEnabled
-                        ))
-                    }
-                },
-                enabled = title.isNotBlank()
-            ) { Text("Dodaj") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Anuluj") } }
-    )
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = title.isNotBlank()
+                    ) { Text("Dodaj") }
+                }
+            }
+        }
+    }
 }
