@@ -29,7 +29,6 @@ class SpeechRecognitionManager(private val context: Context) {
         val recognizer = SpeechRecognizer.createSpeechRecognizer(context)
 
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pl-PL")
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "pl-PL")
             putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_RESULTS, false)
