@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.voiceassistant.R
+import com.voiceassistant.data.db.AppDatabase
 import com.voiceassistant.data.model.CommandType
 import com.voiceassistant.data.model.Note
 import com.voiceassistant.data.model.Reminder
@@ -26,7 +27,6 @@ class RecordingService : Service() {
         const val CHANNEL_ID = "recording_channel"
         const val NOTIFICATION_ID = 1002
 
-        // Broadcast do UI
         const val BROADCAST_TRANSCRIPTION = "com.voiceassistant.TRANSCRIPTION"
         const val BROADCAST_COMMAND_RESULT = "com.voiceassistant.COMMAND_RESULT"
         const val EXTRA_TEXT = "text"
@@ -57,7 +57,7 @@ class RecordingService : Service() {
     }
 
     private fun startRecording() {
-        startForeground(NOTIFICATION_ID, buildNotification("Nasłuchuję..."))
+        startForeground(NOTIFICATION_ID, buildNotification("Nasluchuje..."))
         scope.launch {
             speechManager.startListening().collect { result ->
                 when (result) {
@@ -70,7 +70,7 @@ class RecordingService : Service() {
                         stopSelf()
                     }
                     is SpeechRecognitionManager.SpeechResult.Error -> {
-                        broadcastResult("Błąd: ${result.message}")
+                        broadcastResult("Blad: ${result.message}")
                         stopSelf()
                     }
                     else -> {}
@@ -84,10 +84,10 @@ class RecordingService : Service() {
         stopSelf()
     }
 
-    // ── Przetwarzanie komendy głosowej ────────────────────────────────────────
     private suspend fun processCommand(text: String) {
         val command = VoiceCommandParser.parse(text)
         val repo = ReminderRepository(this@RecordingService)
+        val db = AppDatabase.getInstance(this@RecordingService)
 
         val resultMsg = when (command.type) {
             CommandType.SET_MEDICINE_REMINDER, CommandType.ADD_REMINDER -> {
@@ -108,19 +108,17 @@ class RecordingService : Service() {
                     vibrationEnabled = true
                 )
                 withContext(Dispatchers.IO) { repo.addReminder(reminder) }
-                "✅ Ustawiono: $title"
+                "Ustawiono: $title"
             }
 
             CommandType.ADD_NOTE -> {
                 val content = command.extractedData["content"] ?: text
-                val db = com.voiceassistant.data.db.AppDatabase.getInstance(this@RecordingService)
                 val note = Note(content = content, transcribedFrom = true)
                 withContext(Dispatchers.IO) { db.noteDao().insertNote(note) }
-                "📝 Zanotowano"
+                "Zanotowano"
             }
 
             CommandType.ADD_EVENT -> {
-                // Otwieramy MainActivity z danymi do wypełnienia
                 val eventIntent = Intent(this@RecordingService,
                     com.voiceassistant.MainActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -128,10 +126,55 @@ class RecordingService : Service() {
                     putExtra("add_event_time", command.extractedData["time"]?.toLongOrNull() ?: 0L)
                 }
                 startActivity(eventIntent)
-                "📅 Otwieram kalendarz..."
+                "Otwieram kalendarz..."
             }
 
-            CommandType.UNKNOWN -> "🤷 Nie rozpoznano komendy. Spróbuj: 'Przypomnij mi o lekach o 8'"
+            CommandType.DELETE_NOTE -> {
+                val query = command.extractedData["query"] ?: ""
+                withContext(Dispatchers.IO) {
+                    // Pobierz wszystkie notatki i usuń pierwszą pasującą
+                    val notes = db.noteDao().getAllNotes()
+                    var deleted = false
+                    notes.collect { list ->
+                        val match = if (query.isBlank()) list.firstOrNull()
+                        else list.firstOrNull {
+                            it.content.contains(query, ignoreCase = true) ||
+                            it.title.contains(query, ignoreCase = true)
+                        }
+                        if (match != null) {
+                            db.noteDao().deleteNote(match)
+                            deleted = true
+                        }
+                        return@collect
+                    }
+                    deleted
+                }.let { deleted ->
+                    if (deleted) "Usunieto notatke" else "Nie znaleziono notatki"
+                }
+            }
+
+            CommandType.DELETE_REMINDER -> {
+                val query = command.extractedData["query"] ?: ""
+                withContext(Dispatchers.IO) {
+                    var deleted = false
+                    repo.allReminders.collect { list ->
+                        val match = if (query.isBlank()) list.firstOrNull()
+                        else list.firstOrNull {
+                            it.title.contains(query, ignoreCase = true)
+                        }
+                        if (match != null) {
+                            repo.deleteReminder(match)
+                            deleted = true
+                        }
+                        return@collect
+                    }
+                    deleted
+                }.let { deleted ->
+                    if (deleted) "Usunieto przypomnienie" else "Nie znaleziono przypomnienia"
+                }
+            }
+
+            CommandType.UNKNOWN -> "Nie rozpoznano komendy. Sprobuj: 'Przypomnij mi o lekach o 8'"
         }
 
         broadcastResult(resultMsg)
@@ -158,7 +201,7 @@ class RecordingService : Service() {
             )
         }
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Asystent słucha")
+            .setContentTitle("Asystent slucha")
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_mic_active)
             .setOngoing(true)
