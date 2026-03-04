@@ -1,8 +1,6 @@
 package com.voiceassistant.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.voiceassistant.data.model.CalendarEvent
 import com.voiceassistant.ui.MainViewModel
 import com.voiceassistant.ui.theme.Primary
@@ -31,55 +30,55 @@ fun CalendarScreen(viewModel: MainViewModel) {
     val events by viewModel.calendarEvents.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        // Nagłówek
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
         ) {
-            Text(
-                "Kalendarz",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Row {
-                IconButton(onClick = { viewModel.loadCalendarEvents() }) {
-                    Icon(Icons.Default.Refresh, "Odśwież",
-                        tint = MaterialTheme.colorScheme.primary)
-                }
-                FloatingActionButton(
-                    onClick = { showAddDialog = true },
-                    modifier = Modifier.size(48.dp),
-                    containerColor = Primary
-                ) {
-                    Icon(Icons.Default.Add, "Dodaj wydarzenie", tint = Color.White)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Kalendarz",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    IconButton(onClick = { viewModel.loadCalendarEvents() }) {
+                        Icon(Icons.Default.Refresh, "Odswiez", tint = MaterialTheme.colorScheme.primary)
+                    }
+                    Button(
+                        onClick = { showAddDialog = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                    ) {
+                        Icon(Icons.Default.Add, "Dodaj", tint = Color.White)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Dodaj", color = Color.White)
+                    }
                 }
             }
-        }
 
-        Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(8.dp))
 
-        // Dzisiaj
-        Text(
-            "Nadchodzące (7 dni)",
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-        )
+            Text(
+                "Nadchodzace (7 dni)",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
 
-        Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
 
-        if (events.isEmpty()) {
-            EmptyCalendar()
-        } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(events) { event ->
-                    EventCard(event = event)
+            if (events.isEmpty()) {
+                EmptyCalendar()
+            } else {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(events) { event ->
+                        EventCard(event = event)
+                    }
                 }
             }
         }
@@ -111,7 +110,6 @@ fun EventCard(event: CalendarEvent) {
         shape = RoundedCornerShape(12.dp)
     ) {
         Row(modifier = Modifier.padding(12.dp)) {
-            // Kolorowy pasek po lewej
             Box(
                 modifier = Modifier
                     .width(4.dp)
@@ -165,11 +163,11 @@ fun EmptyCalendar() {
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "Brak wydarzeń w tym tygodniu",
+                "Brak wydarzen w tym tygodniu",
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
             Text(
-                "Dotknij + aby dodać lub użyj głosu",
+                "Dotknij DODAJ aby dodac lub uzyj glosu",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
             )
@@ -186,89 +184,117 @@ fun AddEventDialog(
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
-    var dateText by remember { mutableStateOf("") }
-    var timeText by remember { mutableStateOf("") }
+    var day by remember { mutableStateOf("") }
+    var month by remember { mutableStateOf("") }
+    var hour by remember { mutableStateOf("") }
+    var minute by remember { mutableStateOf("0") }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface,
-        title = {
-            Text("Nowe wydarzenie", fontWeight = FontWeight.Bold)
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    "Nowe wydarzenie",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Tytuł *") },
+                    label = { Text("Tytul *") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
+
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
                     label = { Text("Opis") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
                 )
+
                 OutlinedTextField(
                     value = location,
                     onValueChange = { location = it },
                     label = { Text("Miejsce") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    leadingIcon = { Icon(Icons.Default.LocationOn, null) }
+                    singleLine = true
                 )
+
+                Text("Data:", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(0.7f))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
-                        value = dateText,
-                        onValueChange = { dateText = it },
-                        label = { Text("Data (DD.MM)") },
+                        value = day,
+                        onValueChange = { day = it },
+                        label = { Text("Dzien") },
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
                     OutlinedTextField(
-                        value = timeText,
-                        onValueChange = { timeText = it },
-                        label = { Text("Godzina (HH:MM)") },
+                        value = month,
+                        onValueChange = { month = it },
+                        label = { Text("Miesiac") },
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
                 }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (title.isNotBlank()) {
-                        val cal = parseDateTime(dateText, timeText)
-                        onConfirm(title, description, cal, cal + 3600000, location)
-                    }
-                },
-                enabled = title.isNotBlank()
-            ) { Text("Dodaj") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Anuluj") }
-        }
-    )
-}
 
-private fun parseDateTime(dateStr: String, timeStr: String): Long {
-    return try {
-        val cal = Calendar.getInstance()
-        if (dateStr.contains(".")) {
-            val parts = dateStr.split(".")
-            cal.set(Calendar.DAY_OF_MONTH, parts[0].toInt())
-            cal.set(Calendar.MONTH, parts[1].toInt() - 1)
+                Text("Godzina:", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(0.7f))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = hour,
+                        onValueChange = { hour = it },
+                        label = { Text("Godz (np. 7)") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = minute,
+                        onValueChange = { minute = it },
+                        label = { Text("Min (np. 30)") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Anuluj") }
+
+                    Button(
+                        onClick = {
+                            if (title.isNotBlank()) {
+                                val cal = Calendar.getInstance()
+                                runCatching {
+                                    if (day.isNotBlank()) cal.set(Calendar.DAY_OF_MONTH, day.toInt())
+                                    if (month.isNotBlank()) cal.set(Calendar.MONTH, month.toInt() - 1)
+                                    if (hour.isNotBlank()) cal.set(Calendar.HOUR_OF_DAY, hour.toInt())
+                                    cal.set(Calendar.MINUTE, minute.toIntOrNull() ?: 0)
+                                    cal.set(Calendar.SECOND, 0)
+                                }
+                                onConfirm(title, description, cal.timeInMillis, cal.timeInMillis + 3600000, location)
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = title.isNotBlank()
+                    ) { Text("Dodaj") }
+                }
+            }
         }
-        if (timeStr.contains(":")) {
-            val parts = timeStr.split(":")
-            cal.set(Calendar.HOUR_OF_DAY, parts[0].toInt())
-            cal.set(Calendar.MINUTE, parts[1].toInt())
-        }
-        cal.set(Calendar.SECOND, 0)
-        cal.timeInMillis
-    } catch (e: Exception) {
-        System.currentTimeMillis() + 3600000
     }
 }
