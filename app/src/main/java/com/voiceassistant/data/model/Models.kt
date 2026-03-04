@@ -2,7 +2,6 @@ package com.voiceassistant.data.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import java.time.LocalDateTime
 
 // ─── REMINDER ────────────────────────────────────────────────────────────────
 @Entity(tableName = "reminders")
@@ -10,7 +9,7 @@ data class Reminder(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val title: String,
     val description: String = "",
-    val dateTime: Long,           // epoch millis
+    val dateTime: Long,
     val repeatType: RepeatType = RepeatType.NONE,
     val isActive: Boolean = true,
     val soundEnabled: Boolean = true,
@@ -27,9 +26,9 @@ enum class ReminderCategory(val label: String, val emoji: String) {
     MEDICINE("Leki", "💊"),
     MEETING("Spotkanie", "🤝"),
     TASK("Zadanie", "✅"),
-    GENERAL("Ogólne", "🔔"),
-    WORKOUT("Ćwiczenia", "🏃"),
-    MEAL("Posiłek", "🍽️")
+    GENERAL("Ogolne", "🔔"),
+    WORKOUT("Cwiczenia", "🏃"),
+    MEAL("Posilek", "🍽️")
 }
 
 // ─── NOTE ─────────────────────────────────────────────────────────────────────
@@ -38,15 +37,15 @@ data class Note(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val title: String = "",
     val content: String,
-    val transcribedFrom: Boolean = false,   // czy z głosu
-    val linkedEventId: Long? = null,         // opcjonalnie do kalendarza
+    val transcribedFrom: Boolean = false,
+    val linkedEventId: Long? = null,
     val linkedReminderId: Int? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
-    val tags: String = ""                    // JSON array jako string
+    val tags: String = ""
 )
 
-// ─── CALENDAR EVENT (lokalny cache) ──────────────────────────────────────────
+// ─── CALENDAR EVENT ──────────────────────────────────────────────────────────
 data class CalendarEvent(
     val id: Long,
     val title: String,
@@ -70,10 +69,12 @@ enum class CommandType {
     ADD_EVENT,
     ADD_NOTE,
     SET_MEDICINE_REMINDER,
+    DELETE_NOTE,
+    DELETE_REMINDER,
     UNKNOWN
 }
 
-// ─── RECORDING SESSION ────────────────────────────────────────────────────────
+// ─── RECORDING ────────────────────────────────────────────────────────────────
 @Entity(tableName = "recordings")
 data class Recording(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
