@@ -50,7 +50,6 @@ fun NotesScreen(viewModel: MainViewModel) {
 
         Spacer(Modifier.height(12.dp))
 
-        // Wyszukiwarka
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
@@ -101,6 +100,7 @@ fun NotesScreen(viewModel: MainViewModel) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NoteCard(note: Note, onDelete: () -> Unit) {
     val fmt = SimpleDateFormat("d MMM HH:mm", Locale("pl"))
@@ -156,7 +156,7 @@ fun NoteCard(note: Note, onDelete: () -> Unit) {
                         )
                         Spacer(Modifier.width(2.dp))
                         Text(
-                            "Z głosu",
+                            "Z glosu",
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
                         )
@@ -182,11 +182,11 @@ fun EmptyNotes(hasQuery: Boolean) {
             Text(if (hasQuery) "🔍" else "📝", fontSize = 48.sp)
             Spacer(Modifier.height(8.dp))
             Text(
-                if (hasQuery) "Brak wyników" else "Brak notatek",
+                if (hasQuery) "Brak wynikow" else "Brak notatek",
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
             if (!hasQuery) Text(
-                "Powiedz: \"Zanotuj że...\"",
+                "Powiedz: \"Zanotuj ze...\"",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
             )
@@ -209,13 +209,13 @@ fun AddNoteDialog(onDismiss: () -> Unit, onConfirm: (String, String) -> Unit) {
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Tytuł (opcjonalnie)") },
+                    label = { Text("Tytul (opcjonalnie)") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = content,
                     onValueChange = { content = it },
-                    label = { Text("Treść *") },
+                    label = { Text("Tresc *") },
                     modifier = Modifier.fillMaxWidth().height(120.dp)
                 )
             }
