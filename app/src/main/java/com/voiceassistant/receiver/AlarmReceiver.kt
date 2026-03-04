@@ -15,7 +15,7 @@ import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
 import com.voiceassistant.MainActivity
 import com.voiceassistant.R
-import com.voiceassistant.data.model.Reminder
+import com.voiceassistant.data.db.AppDatabase
 import com.voiceassistant.data.model.RepeatType
 import com.voiceassistant.data.repository.ReminderRepository
 import kotlinx.coroutines.CoroutineScope
@@ -43,17 +43,24 @@ class AlarmReceiver : BroadcastReceiver() {
     }
 
     private fun handleReminder(context: Context, intent: Intent) {
-        val reminderId = intent.getIntExtra(EXTRA_REMINDER_ID, -1)
-        val title = intent.getStringExtra(EXTRA_TITLE) ?: "Przypomnienie"
-        val description = intent.getStringExtra(EXTRA_DESCRIPTION) ?: ""
-        val soundEnabled = intent.getBooleanExtra(EXTRA_SOUND, true)
-        val vibrationEnabled = intent.getBooleanExtra(EXTRA_VIBRATION, true)
+        val reminderId = intent.getIntExtra("reminder_id", -1)
+        val title = intent.getStringExtra("reminder_title") ?: "Przypomnienie"
+        val soundEnabled = intent.getBooleanExtra("sound_enabled", true)
 
-        // Pokaż powiadomienie
-        showNotification(context, reminderId, title, description, soundEnabled)
+        showNotification(context, reminderId, title, "", soundEnabled)
+        vibrate(context)
 
-        // Wibracje
-        if (vibrationEnabled) vibrate(context)
+        // Zaplanuj nastepne powtorzenie jesli codzienne
+        if (reminderId >= 0) {
+            CoroutineScope(Dispatchers.IO).launch {
+                val dao = AppDatabase.getInstance(context).reminderDao()
+                val reminder = dao.getReminderById(reminderId) ?: return@launch
+                if (reminder.repeatType != RepeatType.NONE) {
+                    val repo = ReminderRepository(context)
+                    repo.scheduleNextRepeat(reminderId, reminder.dateTime, reminder.repeatType)
+                }
+            }
+        }
     }
 
     private fun showNotification(
@@ -79,13 +86,13 @@ class AlarmReceiver : BroadcastReceiver() {
             RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
         else null
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val notification = androidx.core.app.NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
-            .setContentText(description.ifEmpty { "Dotknij aby zobaczyć szczegóły" })
-            .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setFullScreenIntent(tapPending, true)   // Pokazuje na ekranie blokady!
+            .setContentText(description.ifEmpty { "Dotknij aby zobaczyc szczegoly" })
+            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_MAX)
+            .setCategory(androidx.core.app.NotificationCompat.CATEGORY_ALARM)
+            .setFullScreenIntent(tapPending, true)
             .setContentIntent(tapPending)
             .setAutoCancel(true)
             .apply { soundUri?.let { setSound(it) } }
@@ -113,7 +120,6 @@ class AlarmReceiver : BroadcastReceiver() {
 
     private fun createChannels(nm: NotificationManager) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Kanał główny
             val channel = NotificationChannel(
                 CHANNEL_ID, "Przypomnienia",
                 NotificationManager.IMPORTANCE_HIGH
@@ -127,9 +133,8 @@ class AlarmReceiver : BroadcastReceiver() {
             }
             nm.createNotificationChannel(channel)
 
-            // Kanał leków (krytyczny)
             val medicineChannel = NotificationChannel(
-                CHANNEL_MEDICINE_ID, "Leki 💊",
+                CHANNEL_MEDICINE_ID, "Leki",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Przypomnienia o lekach"
@@ -139,13 +144,13 @@ class AlarmReceiver : BroadcastReceiver() {
         }
     }
 
-    // Po restarcie telefonu – przywróć wszystkie alarmy
     private fun rescheduleAll(context: Context) {
         val repo = ReminderRepository(context)
         CoroutineScope(Dispatchers.IO).launch {
-            repo.activeReminders.collect { reminders ->
-                reminders.filter { it.dateTime > System.currentTimeMillis() }
-                    .forEach { repo.scheduleAlarm(it) }
+            repo.allReminders.collect { list ->
+                list.filter { it.isActive }.forEach { reminder ->
+                    repo.scheduleAlarm(reminder)
+                }
                 return@collect
             }
         }

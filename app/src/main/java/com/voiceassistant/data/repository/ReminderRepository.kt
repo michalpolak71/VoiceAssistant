@@ -14,7 +14,7 @@ import java.util.Calendar
 
 class ReminderRepository(private val context: Context) {
 
-    private val dao = AppDatabase.getDatabase(context).reminderDao()
+    private val dao = AppDatabase.getInstance(context).reminderDao()
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
     val allReminders: Flow<List<Reminder>> = dao.getAllReminders()
@@ -42,7 +42,6 @@ class ReminderRepository(private val context: Context) {
         val updated = reminder.copy(isActive = active)
         dao.updateReminder(updated)
         if (active) {
-            // Dla codziennych – ustaw czas na dziś lub jutro
             val scheduled = if (updated.repeatType == RepeatType.DAILY) {
                 nextDailyTime(updated)
             } else updated
@@ -52,7 +51,6 @@ class ReminderRepository(private val context: Context) {
         }
     }
 
-    // ── Zaplanuj alarm ────────────────────────────────────────────────────────
     fun scheduleAlarm(reminder: Reminder) {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             action = AlarmReceiver.ACTION_REMINDER
@@ -73,7 +71,6 @@ class ReminderRepository(private val context: Context) {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
                 !alarmManager.canScheduleExactAlarms()) {
-                // Fallback do nieexact jeśli brak uprawnienia
                 alarmManager.setAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent
                 )
@@ -87,7 +84,6 @@ class ReminderRepository(private val context: Context) {
         }
     }
 
-    // ── Wylicz następny czas dla codziennego ─────────────────────────────────
     private fun nextDailyTime(reminder: Reminder): Reminder {
         val cal = Calendar.getInstance()
         val reminderCal = Calendar.getInstance().apply { timeInMillis = reminder.dateTime }
@@ -95,14 +91,12 @@ class ReminderRepository(private val context: Context) {
         cal.set(Calendar.MINUTE, reminderCal.get(Calendar.MINUTE))
         cal.set(Calendar.SECOND, 0)
         cal.set(Calendar.MILLISECOND, 0)
-        // Jeśli czas minął dziś – przesuń na jutro
         if (cal.timeInMillis <= System.currentTimeMillis()) {
             cal.add(Calendar.DAY_OF_YEAR, 1)
         }
         return reminder.copy(dateTime = cal.timeInMillis)
     }
 
-    // ── Zaplanuj następne powtórzenie ─────────────────────────────────────────
     fun scheduleNextRepeat(reminderId: Int, currentTime: Long, repeatType: RepeatType) {
         val cal = Calendar.getInstance().apply { timeInMillis = currentTime }
         when (repeatType) {
@@ -111,7 +105,6 @@ class ReminderRepository(private val context: Context) {
             RepeatType.MONTHLY -> cal.add(Calendar.MONTH, 1)
             RepeatType.NONE -> return
         }
-        // Pobierz reminder z bazy i zaplanuj z nowym czasem
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             action = AlarmReceiver.ACTION_REMINDER
             putExtra("reminder_id", reminderId)
@@ -127,27 +120,10 @@ class ReminderRepository(private val context: Context) {
         }
     }
 
-    // ── Anuluj alarm ──────────────────────────────────────────────────────────
     fun cancelAlarm(reminderId: Int) {
         val intent = Intent(context, AlarmReceiver::class.java)
         val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         val pendingIntent = PendingIntent.getBroadcast(context, reminderId, intent, flags)
         alarmManager.cancel(pendingIntent)
-    }
-
-    // ── Reschedule po restarcie telefonu ──────────────────────────────────────
-    suspend fun rescheduleAllActiveReminders() {
-        dao.getActiveReminders().forEach { reminder ->
-            if (reminder.isActive) {
-                val toSchedule = if (reminder.repeatType == RepeatType.DAILY) {
-                    nextDailyTime(reminder)
-                } else {
-                    // Jednorazowe które minęły – pomiń
-                    if (reminder.dateTime < System.currentTimeMillis()) return@forEach
-                    reminder
-                }
-                scheduleAlarm(toSchedule)
-            }
-        }
     }
 }
