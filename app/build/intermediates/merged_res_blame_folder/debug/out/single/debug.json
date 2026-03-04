@@ -1,0 +1,22 @@
+[
+    {
+        "merged": "com.voiceassistant.app-merged_res-4:/drawable_ic_mic_active.xml.flat",
+        "source": "com.voiceassistant.app-main-6:/drawable/ic_mic_active.xml"
+    },
+    {
+        "merged": "com.voiceassistant.app-merged_res-4:/drawable_ic_mic_idle.xml.flat",
+        "source": "com.voiceassistant.app-main-6:/drawable/ic_mic_idle.xml"
+    },
+    {
+        "merged": "com.voiceassistant.app-merged_res-4:/drawable_overlay_background.xml.flat",
+        "source": "com.voiceassistant.app-main-6:/drawable/overlay_background.xml"
+    },
+    {
+        "merged": "com.voiceassistant.app-merged_res-4:/layout_overlay_dot.xml.flat",
+        "source": "com.voiceassistant.app-main-6:/layout/overlay_dot.xml"
+    },
+    {
+        "merged": "com.voiceassistant.app-merged_res-4:/drawable_ic_notification.xml.flat",
+        "source": "com.voiceassistant.app-main-6:/drawable/ic_notification.xml"
+    }
+]

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Asystent Głosowy</string>
+    <string name="listening">Słucham…</string>
+    <string name="overlay_description">Asystent głosowy</string>
+    <string name="press_to_speak">Naciśnij i mów</string>
+    <string name="tab_calendar">Kalendarz</string>
+    <string name="tab_notes">Notatki</string>
+    <string name="tab_reminders">Alarmy</string>
+    <string name="tab_voice">Głos</string>
+    <style name="Theme.VoiceAssistant" parent="android:Theme.Material.NoTitleBar">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:statusBarColor">@android:color/black</item>
+        <item name="android:navigationBarColor">@android:color/black</item>
+    </style>
+</resources>

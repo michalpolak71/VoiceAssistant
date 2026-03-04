@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Asystent Głosowy</string>
+    <string name="tab_voice">Głos</string>
+    <string name="tab_calendar">Kalendarz</string>
+    <string name="tab_reminders">Alarmy</string>
+    <string name="tab_notes">Notatki</string>
+    <string name="listening">Słucham…</string>
+    <string name="press_to_speak">Naciśnij i mów</string>
+    <string name="overlay_description">Asystent głosowy</string>
+</resources>

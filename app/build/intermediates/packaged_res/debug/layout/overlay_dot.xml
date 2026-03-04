@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="56dp"
+    android:layout_height="56dp">
+
+    <ImageView
+        android:id="@+id/overlay_icon"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="center"
+        android:background="@drawable/overlay_background"
+        android:src="@drawable/ic_mic_idle"
+        android:padding="10dp"
+        android:elevation="8dp"
+        android:contentDescription="Asystent głosowy" />
+
+</FrameLayout>
